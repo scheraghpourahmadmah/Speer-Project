@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Speer_Project.Data;
+using Speer_Project.DTOs;
 using Speer_Project.Model;
 using System.Security.Claims;
 
@@ -10,94 +11,94 @@ namespace Speer_Project.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
     public class NotesController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
-        private readonly UserManager<User> _userManager;
+        private readonly ApplicationDbContext _db;
 
-        public NotesController(ApplicationDbContext context, UserManager<User> userManager)
+        public NotesController(ApplicationDbContext db)
         {
-            _context = context;
-            _userManager = userManager;
+            _db = db;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetNotes()
+        public IActionResult GetNotes()
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var notes = await _context.Notes.Where(n => n.UserId == userId).ToListAsync();
-            return Ok(notes);
+            
+            var notes = _db.Notes.ToList();
+            var toReturn = new List<Note>();
+
+            foreach (var note in notes)
+            {
+                var noteC = new Note
+                {
+                    Id = note.Id,
+                    Title = note.Title,
+                    Content = note.Content
+                };
+                
+                toReturn.Add(noteC);
+            }
+            return Ok(toReturn);
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetNoteById(int id)
+        [HttpGet("get-one/{id}")]
+        public IActionResult GetNote(int id)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var note = await _context.Notes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
-
-            if (note == null)
+            var note = _db.Notes.FirstOrDefault(x => x.Id == id);
+            if(note == null)
             {
                 return NotFound();
             }
-
-            return Ok(note);
+            var toReturn = new Note
+            {
+                Id = note.Id,
+                Title = note.Title,
+                Content = note.Content
+            };
+            return Ok(toReturn);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateNote([FromBody] Note note)
+        [HttpPost("create")]
+        public IActionResult Create(NoteDto note)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            note.UserId = userId;
-            note.CreatedAt = DateTime.UtcNow;
-            note.UpdatedAt = DateTime.UtcNow;
+            var noteToAdd = new Note
+            {
+                Title = note.Title,
+                Content = note.Content,
+                UserId = note.UserId
+            };
+            _db.Notes.Add(noteToAdd);
+            _db.SaveChanges();
 
-            _context.Notes.Add(note);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetNoteById), new { id = note.Id }, note);
+            return NoContent();
         }
 
-        //[HttpPut("{id}")]
-        //public async Task<IActionResult> UpdateNote(int id, [FromBody] Note note)
-        //{
-        //    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        //    var existingNote = await _context.Notes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
+        [HttpPut("update")]
+        public ActionResult Update(NoteUpdateDto model)
+        {
+            
+            var user = _db.Notes.Find(model.Id);
 
-        //    if (existingNote == null)
-        //    {
-        //        return NotFound();
-        //    }
+            user.Title = model.Title;
+            user.Content = model.Content;
+            user.UpdatedAt = DateTime.Now;
 
-        //    existingNote.Title = note.Title;
-        //    existingNote.Content = note.Content;
-        //    existingNote.UpdatedAt = DateTime.UtcNow;
+            if (user == null) return NotFound();
 
-        //    await _context.SaveChangesAsync();
+            _db.SaveChanges();
 
-        //    return NoContent();
-        //}
+            return NoContent();
+        }
 
-        //[HttpDelete("{id}")]
-        //public async Task<IActionResult> DeleteNote(int id)
-        //{
-        //    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        //    var note = await _context.Notes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
+        [HttpDelete("delete/{id}")]
+        public ActionResult Delete(int id)
+        {
+            var user = _db.Notes.Find(id);
+            if (user == null) return NotFound();
+            _db.Remove(user);
+            _db.SaveChanges();
 
-        //    if (note == null)
-        //    {
-        //        return NotFound();
-        //    }
-
-        //    _context.Notes.Remove(note);
-        //    await _context.SaveChangesAsync();
-
-        //    return NoContent();
-        //}
-
-        //[HttpPost("{id}/share")]
-        //public async Task<IActionResult> ShareNote(int id,ShareNoteDto shareNoteDto)
-        //{
-
-    } //}
+            return NoContent();
+        }
     }
+}

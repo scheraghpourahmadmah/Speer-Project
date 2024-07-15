@@ -12,8 +12,8 @@ using Speer_Project.Data;
 namespace Speer_Project.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240712195142_createDatabaseForSpeedProject")]
-    partial class createDatabaseForSpeedProject
+    [Migration("20240713192727_UpdateDtabaseForNewTable")]
+    partial class UpdateDtabaseForNewTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -45,15 +45,17 @@ namespace Speer_Project.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Notes");
                 });
 
-            modelBuilder.Entity("Speer_Project.Model.SharedNote", b =>
+            modelBuilder.Entity("Speer_Project.Model.User", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -61,26 +63,11 @@ namespace Speer_Project.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("NoteId")
-                        .HasColumnType("int");
+                    b.Property<byte[]>("PasswordHash")
+                        .HasColumnType("varbinary(max)");
 
-                    b.Property<string>("SharedWithUserId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NoteId");
-
-                    b.ToTable("SharedNotes");
-                });
-
-            modelBuilder.Entity("Speer_Project.Model.User", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<byte[]>("PasswordSalt")
+                        .HasColumnType("varbinary(max)");
 
                     b.Property<string>("Username")
                         .HasColumnType("nvarchar(max)");
@@ -90,20 +77,15 @@ namespace Speer_Project.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("Speer_Project.Model.SharedNote", b =>
+            modelBuilder.Entity("Speer_Project.Model.Note", b =>
                 {
-                    b.HasOne("Speer_Project.Model.Note", "Note")
-                        .WithMany("SharedNotes")
-                        .HasForeignKey("NoteId")
+                    b.HasOne("Speer_Project.Model.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Note");
-                });
-
-            modelBuilder.Entity("Speer_Project.Model.Note", b =>
-                {
-                    b.Navigation("SharedNotes");
+                    b.Navigation("User");
                 });
 #pragma warning restore 612, 618
         }
